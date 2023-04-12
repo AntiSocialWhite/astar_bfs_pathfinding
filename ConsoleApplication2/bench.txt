@@ -1,0 +1,4 @@
+Mode: BFS
+Mikrosekund: 7552
+Pocet: 8939
+Preset: 1
