@@ -47,3 +47,8 @@
 *.ilk
 *.tlog
 *.recipe
+.vs/Console_PathFinding/v17/Browse.VC.opendb
+*.vsidx
+*.db-shm
+*.db-wal
+ConsoleApplication2/bench.txt

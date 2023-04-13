@@ -99,10 +99,12 @@ protected:
 	void after_solve() {
 		std::string mode_s_add;
 
-		if (mode == 1)
-			mode_s_add = "A*";
-		else
-			mode_s_add = "BFS";
+		switch (mode) {
+			case 1: mode_s_add = "A*"; break;
+			case 2: mode_s_add = "BFS"; break;
+			case 3: mode_s_add = "DIJKSTRA"; break;
+			case 4: mode_s_add = "CUSTOM"; break;
+		}
 
 		std::string mode_s = "Mode: " + mode_s_add + "\n";
 		std::string preset_s = "Preset: " + std::to_string(preset) + "\n";
@@ -146,7 +148,7 @@ protected:
 
 	float Distance(s_pozicie* a, s_pozicie* b)
 	{
-		 return sqrtf((a->x - b->x) * (a->x - b->x) + (a->y - b->y) * (a->y - b->y)); // Euklidova
+		 return fabsf(sqrtf((a->x - b->x) * (a->x - b->x) + (a->y - b->y) * (a->y - b->y))); // Euklidova
 	}
 
 	void Set_vars(s_pozicie* aktualny, s_pozicie* sused) {
@@ -188,6 +190,109 @@ protected:
 					netestovane.push_back(sused);
 
 					sused->parent = aktualny; // nastavujeme iba parents, vždy to bude prvá najlepšia cesta nako¾ko sa prechádza takmer celý graf.
+				}
+			}
+		}
+
+		auto end_time = chrono::high_resolution_clock::now();
+		cas = chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+		return true;
+	}
+
+
+	bool Solve_Dijkstra() {
+		// reset
+		on_solve();
+		auto start_time = chrono::high_resolution_clock::now();
+		navstivene_pozicie = 0;
+		cas.zero();
+		s_pozicie* aktualny = start;
+		s_pozicie* childNode = nullptr;
+		start->dist_to_aktual = 0.0f;
+
+		list<s_pozicie*> netestovane; // tak isto ako pri A* si vytvoríme list s netestovanými pozíciami a pridáme štart
+		netestovane.push_back(start);
+
+		while (!netestovane.empty() && aktualny != koniec) // najst najkratsiu cestu
+		{
+			while (!netestovane.empty() && netestovane.front()->navstivene) 
+				netestovane.pop_front();
+
+			if (netestovane.empty()) // sanity
+				break;
+
+			aktualny = netestovane.front();
+			aktualny->navstivene = true; // navštívená
+			navstivene_pozicie++; // pre pocet navstivenych
+
+			for (const auto& sused : aktualny->susedia)
+			{
+				if (!sused->navstivene && sused->prekazka == 0) {
+
+					netestovane.push_back(sused);
+
+					float lower = aktualny->dist_to_aktual + Distance(aktualny, sused);
+
+					if (lower < sused->dist_to_aktual + Distance(sused, koniec)){ // ve¾mi podobný princíp ako pri A*
+
+						sused->parent = aktualny;
+						sused->dist_to_aktual = lower;
+					}
+				}
+			}
+		}
+
+		auto end_time = chrono::high_resolution_clock::now();
+		cas = chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+		return true;
+	}
+
+	bool Solve_DIY() {
+		// reset
+		on_solve();
+		auto start_time = chrono::high_resolution_clock::now();
+		navstivene_pozicie = 0;
+		cas.zero();
+		s_pozicie* aktualny = start;
+		s_pozicie* childNode = nullptr;
+		start->dist_to_aktual = 0.0f;
+		start->dist_to_koniec = Distance(start, koniec);
+
+		list<s_pozicie*> netestovane;
+		netestovane.push_back(start);
+
+		for (int32_t x = 0; x < map_sirka; x++) {
+			for (int32_t y = 0; y < map_vyska; y++)
+			{
+				if (start != &nodes[y * map_sirka + x]) {
+					nodes[y * map_sirka + x].dist_to_koniec = Distance(&nodes[y * map_sirka + x], koniec); // nastavenie všetkých vzdialeností podla ktorých potom testujeme
+					nodes[y * map_sirka + x].dist_to_aktual = Distance(&nodes[y * map_sirka + x], start); // nastavenie všetkých vzdialeností podla ktorých potom testujeme
+				}
+			}
+		}
+
+		while (!netestovane.empty() && aktualny != koniec) // najst najkratsiu cestu
+		{
+			while (!netestovane.empty() && netestovane.front()->navstivene)
+				netestovane.pop_front();
+
+			if (netestovane.empty()) // sanity
+				break;
+
+			netestovane.sort([](const s_pozicie* lhs, const s_pozicie* rhs) { return lhs->dist_to_aktual < rhs->dist_to_aktual; }); // sortovanie
+			netestovane.sort([](const s_pozicie* lhs, const s_pozicie* rhs) { return lhs->dist_to_koniec < rhs->dist_to_koniec; }); // sortovanie
+
+			aktualny = netestovane.front();
+			aktualny->navstivene = true; // navštívená
+			navstivene_pozicie++; // pre pocet navstivenych
+
+			for (auto sused : aktualny->susedia)
+			{
+				if (!sused->navstivene && sused->prekazka == 0) {
+
+					netestovane.push_back(sused);
+
+					sused->parent = aktualny;
 				}
 			}
 		}
@@ -243,13 +348,11 @@ protected:
 	}
 
 	void restart_solve() {
-		if (mode == 1) {
-			if (Solve()) // musime forcnu aby sa vyriešilo znovu.
-				after_solve();
-		}
-		else {
-			if (Solve_BFS()) // musime forcnu aby sa vyriešilo znovu.
-				after_solve();
+		switch (mode) {
+		case 1: if (Solve()) after_solve(); break;
+		case 2: if (Solve_BFS()) after_solve(); break;
+		case 3: if (Solve_Dijkstra()) after_solve(); break;
+		case 4: if (Solve_DIY()) after_solve(); break;
 		}
 	}
 
@@ -298,7 +401,7 @@ protected:
 		{
 			mode++;
 
-			if (mode > 2)
+			if (mode > 4)
 				mode = 1;
 
 			restart_solve();
@@ -362,7 +465,14 @@ protected:
 		preset ? DrawString(1, 149, L"Preset aktivny [DELETE].") : DrawString(1, 149, L"Preset neaktivny [DELETE].");
 		std::wstring pocet = L"Pocet:" + std::to_wstring(navstivene_pozicie);
 		std::wstring cas_a = L"Mikrosekund: " + std::to_wstring(cas.count());
-		mode == 1 ? DrawString(130, 145, L"Mode: A*") : DrawString(130, 145, L"Mode: BFS");
+
+		switch (mode) {
+			case 1: DrawString(130, 145, L"Mode: A*"); break;
+			case 2: DrawString(130, 145, L"Mode: BFS"); break; 
+			case 3: DrawString(130, 145, L"Mode: Dijkstra"); break;
+			case 4: DrawString(130, 145, L"Mode: Custom"); break;
+		}
+
 		DrawString(130, 147, pocet);
 		DrawString(130, 149, cas_a);
 	}
