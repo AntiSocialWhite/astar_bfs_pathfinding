@@ -173,18 +173,15 @@ protected:
 		list<s_pozicie*> netestovane;
 		netestovane.push_back(start);
 
-		while (aktualny != koniec) {
-
-			if (netestovane.empty())
-				break;
+		while (aktualny != koniec && !netestovane.empty()) {
 	
-			aktualny = netestovane.front();
+			aktualny = netestovane.front(); // first in
 			aktualny->navstivene = true; // navštívená
 			navstivene_pozicie++; // pre pocet navstivenych
 
-			netestovane.pop_front(); // pozície sa zbavíme, už sme ju navštívili
+			netestovane.pop_front(); // first out, nepoužijeme ju už znovu
 
-			for (auto sused : aktualny->susedia)
+			for (auto sused : aktualny->susedia) // BFS navšetvuje všetky susedné uzly
 			{
 				if (sused->prekazka == 0 && !sused->navstivene) {
 					netestovane.push_back(sused);
@@ -279,8 +276,13 @@ protected:
 			if (netestovane.empty()) // sanity
 				break;
 
-			netestovane.sort([](const s_pozicie* lhs, const s_pozicie* rhs) { return lhs->dist_to_aktual < rhs->dist_to_aktual; }); // sortovanie
-			netestovane.sort([](const s_pozicie* lhs, const s_pozicie* rhs) { return lhs->dist_to_koniec < rhs->dist_to_koniec; }); // sortovanie
+			if (netestovane.size() > 2) {
+				netestovane.sort([](const s_pozicie* lhs, const s_pozicie* rhs) {
+					if (lhs->dist_to_aktual != rhs->dist_to_aktual)
+						return (lhs->dist_to_aktual < rhs->dist_to_aktual && lhs->dist_to_koniec < rhs->dist_to_koniec) 
+						|| (fabs(lhs->dist_to_koniec - rhs->dist_to_koniec) > 1 && lhs->dist_to_koniec < rhs->dist_to_koniec);
+					else return lhs->dist_to_koniec < rhs->dist_to_koniec; }); // sortovanie 
+			}
 
 			aktualny = netestovane.front();
 			aktualny->navstivene = true; // navštívená

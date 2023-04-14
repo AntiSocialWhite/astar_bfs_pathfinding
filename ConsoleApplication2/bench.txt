@@ -1,4 +1,4 @@
-Mode: A*
-Mikrosekund: 369
-Pocet: 109
+Mode: CUSTOM
+Mikrosekund: 204
+Pocet: 57
 Preset: 1
